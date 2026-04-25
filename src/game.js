@@ -9,6 +9,13 @@ const DASH_SPEED = 12;
 const DASH_DURATION = 120;
 const DASH_COOLDOWN = 900;
 
+const SWORD = {
+  icon: '⚔️', name: 'Sword', color: '#c0c0c0',
+  damage: 30, range: 55, cooldown: 20,
+  particleColor: '#ffffff', particleSize: 6,
+  isMelee: true,
+};
+
 const STAVES = {
   bone: {
     icon: '🦴', name: 'Bone Staff', color: '#e8dcc8',
@@ -108,75 +115,44 @@ const BOSS_TYPES = {
 };
 
 // ─── Level Configurations ────────────────────────────────────
-const LEVELS = [
-  {
-    id: 1, biome: 'graveyard',
-    bg: ['#050508','#0a0a12'],
-    groundColor: '#2a2a1a', wallColor: '#1a1a0f',
-    enemyTypes: ['ghost','skeleton','bat'],
-    enemyCount: 8, spawnRate: 3500,
-    objective: 'kill_all', killGoal: 12,
-    hasBoss: false,
+function generateLevelConfig(levelIdx) {
+  const n = levelIdx + 1;
+  const biomes = [
+    { biome:'graveyard', bg:['#050508','#0a0a12'], groundColor:'#2a2a1a', wallColor:'#1a1a0f', enemyTypes:['ghost','skeleton','bat'], groundDecor:['grave','tree','bone'] },
+    { biome:'crypt',     bg:['#080408','#120812'], groundColor:'#1f1f2a', wallColor:'#0f0f1a', enemyTypes:['skeleton','zombie','wraith'], groundDecor:['stone','rune','bone'] },
+    { biome:'abyss',     bg:['#04060a','#0a0616'], groundColor:'#0a1020', wallColor:'#050810', enemyTypes:['demon','wraith','bat','ghost'], groundDecor:['rune','crystal','bone'] },
+    { biome:'lich_keep', bg:['#050010','#0d0020'], groundColor:'#140a28', wallColor:'#0a0618', enemyTypes:['wraith','demon','skeleton'], groundDecor:['rune','crystal','stone'] },
+    { biome:'inferno',   bg:['#0a0400','#1a0800'], groundColor:'#2a1000', wallColor:'#1a0800', enemyTypes:['demon','zombie','wraith','bat','ghost'], groundDecor:['rune','bone','crystal'] },
+  ];
+
+  const biome = biomes[levelIdx % biomes.length];
+  const hasBoss = n % 10 === 0;
+
+  return {
+    ...biome,
+    id: n,
+    enemyCount: 8 + Math.floor(n * 1.8),
+    spawnRate: Math.max(800, 3500 - n * 60),
+    killGoal: 8 + Math.floor(n * 1.8),
+    objective: hasBoss ? 'boss' : 'kill_all',
+    hasBoss,
+    bossType: n % 20 === 0 ? 'dread' : 'lich',
     timeLimit: 0,
-    staveReward: 'fire',
-    foliage: true,
-    platforms: 6,
-    groundDecor: ['grave','grave','grave','tree','bone'],
-  },
-  {
-    id: 2, biome: 'crypt',
-    bg: ['#080408','#120812'],
-    groundColor: '#1f1f2a', wallColor: '#0f0f1a',
-    enemyTypes: ['skeleton','zombie','wraith'],
-    enemyCount: 12, spawnRate: 2800,
-    objective: 'kill_all', killGoal: 18,
-    hasBoss: false, timeLimit: 90,
-    staveReward: 'frost',
-    foliage: false,
-    platforms: 8,
-    groundDecor: ['stone','rune','rune','bone','stone'],
-  },
-  {
-    id: 3, biome: 'abyss',
-    bg: ['#04060a','#0a0616'],
-    groundColor: '#0a1020', wallColor: '#050810',
-    enemyTypes: ['demon','wraith','bat','ghost'],
-    enemyCount: 16, spawnRate: 2200,
-    objective: 'collect_shards', collectGoal: 3,
-    hasBoss: false, timeLimit: 0,
-    staveReward: 'lightning',
-    foliage: false,
-    platforms: 10,
-    groundDecor: ['rune','crystal','rune','crystal','bone'],
-  },
-  {
-    id: 4, biome: 'lich_keep',
-    bg: ['#050010','#0d0020'],
-    groundColor: '#140a28', wallColor: '#0a0618',
-    enemyTypes: ['wraith','demon','skeleton'],
-    enemyCount: 10, spawnRate: 2000,
-    objective: 'boss', killGoal: 0,
-    hasBoss: true, bossType: 'lich',
-    timeLimit: 0,
-    staveReward: 'shadow',
-    foliage: false,
-    platforms: 7,
-    groundDecor: ['rune','crystal','stone'],
-  },
-  {
-    id: 5, biome: 'inferno',
-    bg: ['#0a0400','#1a0800'],
-    groundColor: '#2a1000', wallColor: '#1a0800',
-    enemyTypes: ['demon','zombie','wraith','bat','ghost'],
-    enemyCount: 20, spawnRate: 1600,
-    objective: 'escape', timeLimit: 60,
-    hasBoss: false,
-    staveReward: 'poison',
-    foliage: false,
-    platforms: 12,
-    groundDecor: ['rune','bone','crystal','rune'],
-  },
-];
+    staveReward: null,
+    weaponReward: hasBoss ? getWeaponForLevel(n) : null,
+    foliage: biome.biome === 'graveyard',
+    platforms: Math.min(6 + Math.floor(n * 0.4), 18),
+  };
+}
+
+function getWeaponForLevel(n) {
+  const weapons = ['fire','frost','lightning','shadow','poison'];
+  const idx = Math.floor(n / 10) - 1;
+  return weapons[idx % weapons.length] || null;
+}
+
+const LEVELS = { length: 100 };
+LEVELS.get = (idx) => generateLevelConfig(idx);
 
 // ─── Particles ────────────────────────────────────────────────
 class Particle {
@@ -583,7 +559,9 @@ class Player {
     this.dead = false;
     this.flickerTimer = 0;
     this.invulTimer = 0;
-    this.staves = ['bone'];
+    this.staves = ['sword'];
+    this.swordSwing = 0; // timer da animação do swing
+    this.swordDamage = 30;
     this.activeStaff = 0;
     this.staffCooldowns = {};
     this.dir = 1;
@@ -612,7 +590,14 @@ class Player {
   addStaff(id) {
     if (!this.staves.includes(id)) this.staves.push(id);
   }
-  getCurrentStaff() { return STAVES[this.staves[this.activeStaff]]; }
+
+
+  getCurrentStaff() {
+    const id = this.staves[this.activeStaff];
+    return id === 'sword' ? SWORD : STAVES[id];
+  }
+
+
   update(keys, mouse, game) {
     if (this.dead) return;
     this.animTimer++;
@@ -687,15 +672,58 @@ class Player {
     for (const id in this.staffCooldowns) {
       if (this.staffCooldowns[id] > 0) this.staffCooldowns[id]--;
     }
+    if (this.swordCooldown > 0) this.swordCooldown--;
+    if (this.swordSwing > 0) this.swordSwing--;
     // Switch staff
     for (let i=0;i<this.staves.length;i++) {
       if (keys[String(i+1)]) { this.activeStaff = i; }
     }
     // Cast
+    // if (game.keys['x'] || game.keys['X']) {
+    //   this.castSpell(mouse, game);
+    // }
     if (game.keys['x'] || game.keys['X']) {
-      this.castSpell(mouse, game);
+      if (this.staves[this.activeStaff] === 'sword') {
+        this.swingSword(game);
+      } else {
+          this.castSpell(mouse, game);
+  }
+}
+  }
+
+  swingSword(game) {
+  if (this.swordCooldown > 0) return;
+  this.swordCooldown = SWORD.cooldown;
+  this.swordSwing = 15;
+  const cx = this.x + this.w/2;
+  const cy = this.y + this.h/2;
+  const hitX = this.dir > 0 ? this.x + this.w : this.x - SWORD.range;
+  // Partículas do swing
+  for (let i = 0; i < 8; i++) {
+    game.particles.push(new Particle(
+      hitX, cy + (Math.random()-0.5)*40,
+      this.dir * (2 + Math.random()*3),
+      (Math.random()-0.5)*3,
+      '#c0c0c0', 4 + Math.random()*4, 12
+    ));
+  }
+  // Checar inimigos no alcance
+  const targets = game.boss && !game.boss.dead
+    ? [game.boss, ...game.enemies]
+    : game.enemies;
+  for (const e of targets) {
+    if (e.dead || e.dying) continue;
+    const ex = e.x + e.w/2, ey = e.y + e.h/2;
+    const dx = ex - cx, dy = ey - cy;
+    if (Math.abs(dx) < SWORD.range + e.w/2 && Math.abs(dy) < 40
+        && Math.sign(dx) === this.dir) {
+      e.takeDamage(SWORD.damage, game, 'sword');
+      if (e instanceof Boss && e.dead) game.bossDefeated = true;
     }
   }
+}
+
+
   castSpell(mouse, game) {
     const staff = this.getCurrentStaff();
     const id = this.staves[this.activeStaff];
@@ -772,17 +800,53 @@ class Player {
     ctx.beginPath(); ctx.arc(sx+this.w/2-4, sy+13, 2.5, 0, Math.PI*2); ctx.fill();
     ctx.beginPath(); ctx.arc(sx+this.w/2+4, sy+13, 2.5, 0, Math.PI*2); ctx.fill();
     ctx.shadowBlur = 0;
+
+
     // Staff (weapon)
-    const staff = this.getCurrentStaff();
-    const staffX = this.dir > 0 ? sx+this.w+2 : sx-10;
-    ctx.strokeStyle = '#4a2a00';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(staffX, sy+10);
-    ctx.lineTo(staffX, sy+this.h);
-    ctx.stroke();
-    ctx.font = '18px serif';
-    ctx.fillText(staff.icon, staffX-9, sy+12);
+    // const staff = this.getCurrentStaff();
+    // const staffX = this.dir > 0 ? sx+this.w+2 : sx-10;
+    // ctx.strokeStyle = '#4a2a00';
+    // ctx.lineWidth = 3;
+    // ctx.beginPath();
+    // ctx.moveTo(staffX, sy+10);
+    // ctx.lineTo(staffX, sy+this.h);
+    // ctx.stroke();
+    // ctx.font = '18px serif';
+    // ctx.fillText(staff.icon, staffX-9, sy+12);
+
+    // Weapon draw
+    if (this.staves[this.activeStaff] === 'sword') {
+      const swingAngle = this.swordSwing > 0
+        ? this.dir * (Math.PI/4 - (this.swordSwing/15)*(Math.PI/2))
+        : this.dir * Math.PI/4;
+      const baseX = sx + this.w/2;
+      const baseY = sy + this.h/2;
+      ctx.save();
+      ctx.translate(baseX, baseY);
+      ctx.rotate(swingAngle);
+      ctx.strokeStyle = this.swordSwing > 0 ? '#ffffff' : '#c0c0c0';
+      ctx.lineWidth = 4;
+      ctx.shadowColor = this.swordSwing > 0 ? '#ffffff' : '#888';
+      ctx.shadowBlur = this.swordSwing > 0 ? 15 : 4;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(this.dir * 50, 0);
+      ctx.stroke();
+      ctx.restore();
+    } else {
+      const staff = this.getCurrentStaff();
+      const staffX = this.dir > 0 ? sx+this.w+2 : sx-10;
+      ctx.strokeStyle = '#4a2a00';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(staffX, sy+10);
+      ctx.lineTo(staffX, sy+this.h);
+      ctx.stroke();
+      ctx.font = '18px serif';
+      ctx.fillText(staff.icon, staffX-9, sy+12);
+    }
+
+
     // Dash trail
     if (this.dashing) {
       ctx.globalAlpha = 0.3;
@@ -875,7 +939,7 @@ class Game {
     this.initInput();
   }
 
-  get currentLevel() { return LEVELS[this.currentLevelIdx]; }
+  get currentLevel() { return LEVELS.get(this.currentLevelIdx); }
 
   initInput() {
     const kd = (e) => {
@@ -938,10 +1002,19 @@ class Game {
     // Spawn player on a platform
     const R = this.world.ROWS - 8, C = 4;
     this.player = new Player(C*TILE, R*TILE);
+
+
     // Give staves from previous levels
+    // for (let i=0;i<=idx;i++) {
+    //   if (LEVELS[i].staveReward) this.player.addStaff(LEVELS[i].staveReward);
+    // }
+
     for (let i=0;i<=idx;i++) {
-      if (LEVELS[i].staveReward) this.player.addStaff(LEVELS[i].staveReward);
+      const lvl = LEVELS.get(i);
+      if (lvl.staveReward) this.player.addStaff(lvl.staveReward);
     }
+
+
     // Exit door position
     this.exitX = (this.world.COLS-4)*TILE;
     this.exitY = (this.world.ROWS-8)*TILE;
@@ -952,7 +1025,7 @@ class Game {
       this.boss = new Boss(this.worldW/2, (this.world.ROWS-10)*TILE, cfg.bossType, idx+1);
     }
     // Show objective
-    const objText = t('msg_level_obj')[idx] || '';
+    const objText = t('msg_level_obj')[idx % 5] || '';
     this.showMessage(objText, 5000);
     this.updateHUD();
     this.running = true;
@@ -1026,10 +1099,14 @@ class Game {
     // Staves
     const hudStaves = document.getElementById('hud-staves');
     hudStaves.innerHTML = '';
+
     p.staves.forEach((id,i) => {
-      const s = STAVES[id];
+      const s = id === 'sword' ? SWORD : STAVES[id];
+      if (!s) return;
       const cd = p.staffCooldowns[id] || 0;
-      const maxCd = s.cooldown / 16;
+      const maxCd = (s.cooldown || 20) / 16;
+
+
       const slot = document.createElement('div');
       slot.className = 'staff-slot' + (i===p.activeStaff ? ' active' : '');
       slot.innerHTML = `<span>${s.icon}</span><span class="slot-key">${i+1}</span><div class="cooldown-overlay" style="height:${(cd/maxCd*100)||0}%"></div>`;
@@ -1369,7 +1446,7 @@ function startGame() {
 function nextLevel() {
   if (!game) return;
   const nextIdx = game.currentLevelIdx + 1;
-  if (nextIdx >= LEVELS.length) {
+  if (nextIdx >= 100) {
     // Victory — loop with harder difficulty or back to menu
     showScreen('menu-screen');
     return;

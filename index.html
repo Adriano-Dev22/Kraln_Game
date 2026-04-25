@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KRALN — Into the Dark</title>
+  <link rel="stylesheet" href="src/style.css" />
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+  <div id="ui-overlay">
+    <!-- Language Screen -->
+    <div id="lang-screen" class="screen active">
+      <div class="lang-container">
+        <div class="game-logo">
+          <span class="logo-k">K</span><span class="logo-rest">RALN</span>
+          <div class="logo-sub">INTO THE DARK</div>
+        </div>
+        <div class="lang-title">Choose your language / Escolha seu idioma</div>
+        <div class="lang-buttons">
+          <button class="lang-btn" onclick="selectLang('en')">
+            <span class="flag">🇺🇸</span> English
+          </button>
+          <button class="lang-btn" onclick="selectLang('pt')">
+            <span class="flag">🇧🇷</span> Português
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Menu -->
+    <div id="menu-screen" class="screen">
+      <div class="menu-container">
+        <div class="game-logo">
+          <span class="logo-k">K</span><span class="logo-rest">RALN</span>
+          <div class="logo-sub" id="menu-subtitle">INTO THE DARK</div>
+        </div>
+        <div class="menu-buttons">
+          <button class="menu-btn pulse-btn" onclick="showTutorial()" id="btn-play">▶ PLAY</button>
+          <button class="menu-btn" onclick="showCredits()" id="btn-credits">✦ CREDITS</button>
+          <button class="menu-btn small-btn" onclick="switchLang()" id="btn-lang">🌐 Language</button>
+        </div>
+        <div class="blood-drip"></div>
+      </div>
+    </div>
+
+    <!-- Tutorial Screen -->
+    <div id="tutorial-screen" class="screen">
+      <div class="tutorial-container">
+        <h1 id="tut-title">HOW TO SURVIVE</h1>
+        <div class="tutorial-grid">
+          <div class="tut-section">
+            <h2 id="tut-obj-title">🎯 OBJECTIVE</h2>
+            <p id="tut-obj-text"></p>
+          </div>
+          <div class="tut-section">
+            <h2 id="tut-ctrl-title">🎮 CONTROLS</h2>
+            <div class="controls-list" id="tut-controls"></div>
+          </div>
+          <div class="tut-section">
+            <h2 id="tut-staff-title">🔮 STAVES & MAGIC</h2>
+            <div id="tut-staves"></div>
+          </div>
+          <div class="tut-section">
+            <h2 id="tut-lvl-title">⚔️ LEVELS</h2>
+            <p id="tut-lvl-text"></p>
+          </div>
+        </div>
+        <button class="menu-btn pulse-btn" onclick="startGame()" id="btn-start-game">⚡ BEGIN</button>
+      </div>
+    </div>
+
+    <!-- HUD -->
+    <div id="hud" class="screen" style="pointer-events:none;">
+      <div class="hud-top">
+        <div class="hud-health">
+          <span id="hud-hp-icon">❤️</span>
+          <div class="bar-bg"><div class="bar-fill hp-bar" id="hp-bar"></div></div>
+          <span id="hud-hp-text">100/100</span>
+        </div>
+        <div class="hud-center">
+          <div class="hud-level" id="hud-level">LEVEL 1</div>
+          <div class="hud-score" id="hud-score">SCORE: 0</div>
+        </div>
+        <div class="hud-mana">
+          <span id="hud-mp-icon">💧</span>
+          <div class="bar-bg"><div class="bar-fill mp-bar" id="mp-bar"></div></div>
+          <span id="hud-mp-text">80/80</span>
+        </div>
+      </div>
+      <div class="hud-staves" id="hud-staves"></div>
+      <div class="hud-messages" id="hud-messages"></div>
+      <div class="hud-boss" id="hud-boss" style="display:none">
+        <span id="boss-name"></span>
+        <div class="bar-bg boss-bar-bg"><div class="bar-fill boss-bar" id="boss-bar"></div></div>
+      </div>
+    </div>
+
+    <!-- Level Complete -->
+    <div id="levelup-screen" class="screen">
+      <div class="levelup-container">
+        <div class="levelup-title" id="lu-title">LEVEL COMPLETE!</div>
+        <div class="levelup-score" id="lu-score"></div>
+        <div class="levelup-reward" id="lu-reward"></div>
+        <button class="menu-btn pulse-btn" onclick="nextLevel()" id="btn-next-lvl">NEXT LEVEL ▶</button>
+      </div>
+    </div>
+
+    <!-- Game Over -->
+    <div id="gameover-screen" class="screen">
+      <div class="gameover-container">
+        <div class="go-title" id="go-title">YOU DIED</div>
+        <div class="go-msg" id="go-msg"></div>
+        <div class="go-score" id="go-score"></div>
+        <button class="menu-btn" onclick="restartGame()" id="btn-restart">↺ RETRY</button>
+        <button class="menu-btn small-btn" onclick="goMenu()" id="btn-go-menu">MENU</button>
+      </div>
+    </div>
+
+    <!-- Credits -->
+    <div id="credits-screen" class="screen">
+      <div class="credits-container">
+        <h1>KRALN</h1>
+        <p>AA horror action-adventure game</p>
+        <p>Built with HTML5 Canvas + JavaScript</p>
+        <p>No libraries. </p>
+        <p>Developed by Claudemir Adriano — 2026</p>
+        <p>github.com/Adriano-dev22</p>
+        <br/>
+        <p style="color:#888">github.com/Adriano-dev22/kraln</p>
+        <button class="menu-btn small-btn" onclick="showScreen('menu-screen')" id="btn-back-credits">← BACK</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="src/lang.js"></script>
+  <script src="src/game.js"></script>
+</body>
+</html>

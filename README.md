@@ -8,7 +8,10 @@
 ![Deploy](https://img.shields.io/badge/Deploy-GitHub%20Pages-181717?style=for-the-badge&logo=github)
 
 ## 🎮 Play Now
-**[→ Click here to play KRALN]([https://your-username.github.io/kraln](https://adriano-dev22.github.io/Kraln_Game/))**
+
+<a href="https://adriano-dev22.github.io/Kraln_Game/" target="_blank">
+  <img src="https://img.shields.io/badge/PLAY%20KRALN-Into%20the%20Dark-8B0000?style=for-the-badge&logo=ghost&logoColor=white" />
+</a>
 
 ---
 

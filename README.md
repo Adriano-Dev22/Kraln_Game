@@ -7,6 +7,7 @@
 ![JavaScript](https://img.shields.io/badge/JavaScript-Pure-F7DF1E?style=for-the-badge&logo=javascript)
 ![Deploy](https://img.shields.io/badge/Deploy-GitHub%20Pages-181717?style=for-the-badge&logo=github)
 
+
 ## 🎮 Play Now
 
 <a href="https://adriano-dev22.github.io/Kraln_Game/" target="_blank">

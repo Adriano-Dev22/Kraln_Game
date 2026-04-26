@@ -103,3 +103,26 @@ See [CHANGELOG.md](./CHANGELOG.md) for the full history of changes.
 ## 🧭 Code of Conduct
 
 This project follows a [Code of Conduct](./CODE_OF_CONDUCT.md). Please read it before contributing.
+
+---
+
+## 🗂️ Full Module Architecture
+
+| File | Description |
+|------|-------------|
+| `src/game.js` | Core game engine and main loop |
+| `src/config.js` | Centralized game constants |
+| `src/lang.js` | Bilingual language system (EN/PT) |
+| `src/storage.js` | localStorage persistence (score, settings) |
+| `src/loading.js` | Animated loading screen |
+| `src/pausemenu.js` | In-game pause menu |
+| `src/settings.js` | Settings panel (volume, language, particles) |
+| `src/combo.js` | Kill combo multiplier system |
+| `src/screenshake.js` | Screen shake on damage and explosions |
+| `src/jumpcontroller.js` | Double jump with coyote time fix |
+| `src/particlepool.js` | Object pooling for particles |
+| `src/deltatime.js` | Framerate-independent movement |
+| `src/minimap.js` | Level progress minimap |
+| `src/enemyanimations.js` | Per-enemy death animations |
+| `style.css` | Horror UI styling |
+| `index.html` | Entry point |

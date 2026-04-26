@@ -1,0 +1,39 @@
+// ============================================================
+// KRALN — Game Configuration Constants
+// ============================================================
+
+export const CONFIG = {
+  // Canvas
+  CANVAS_WIDTH: 900,
+  CANVAS_HEIGHT: 500,
+
+  // Player
+  PLAYER_SPEED: 3.5,
+  PLAYER_JUMP_FORCE: -13,
+  PLAYER_MAX_HP: 100,
+  PLAYER_INVUL_FRAMES: 45,
+  PLAYER_FLICKER_FRAMES: 15,
+  PLAYER_DASH_SPEED: 9,
+  PLAYER_DASH_DURATION: 12,
+  PLAYER_DASH_COOLDOWN: 40,
+  SHIELD_DAMAGE_REDUCTION: 0.3,
+
+  // Physics
+  GRAVITY: 0.55,
+  TERMINAL_VELOCITY: 18,
+
+  // Combat
+  PARRY_WINDOW: 10,
+  COMBO_RESET_TIME: 120,
+
+  // Enemies
+  ENEMY_SPAWN_INTERVAL: 180,
+  MAX_ENEMIES: 12,
+
+  // Particles
+  MAX_PARTICLES: 200,
+  PARTICLE_LIFETIME: 40,
+
+  // Levels
+  TOTAL_LEVELS: 5,
+};

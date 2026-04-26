@@ -89,3 +89,17 @@ MIT — free to play, fork, mod, and share.
 
 ---
 *“He who fights with monsters should take care lest he thereby become a monster. And if you gaze long into an abyss, the abyss also gazes into you.”*
+
+---
+
+## 🤝 Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines on how to contribute.
+
+## 📋 Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md) for the full history of changes.
+
+## 🧭 Code of Conduct
+
+This project follows a [Code of Conduct](./CODE_OF_CONDUCT.md). Please read it before contributing.

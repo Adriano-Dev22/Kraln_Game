@@ -278,15 +278,113 @@ body {
   display: flex; gap: 0.5rem;
 }
 .staff-slot {
-  width: 52px; height: 52px;
-  background: rgba(5,5,10,0.8);
-  border: 2px solid rgba(139,0,0,0.4);
-  border-radius: 4px;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  font-size: 1.4rem;
-  transition: all 0.15s;
   position: relative;
+  width: 48px;
+  height: 48px;
+  border: 2px solid #333;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  cursor: pointer;
+  background: #0a0a14;
+  transition: border-color 0.2s;
+  overflow: hidden;
+}
+
+.staff-slot.active {
+  border-color: #cc44ff;
+  box-shadow: 0 0 12px #cc44ff88;
+}
+
+.slot-key {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-size: 9px;
+  color: #555;
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.cooldown-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.65);
+  transition: height 0.1s linear;
+  pointer-events: none;
+}
+
+/* Minimapa */
+#minimap-canvas {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  border: 1px solid #333;
+  border-radius: 4px;
+  image-rendering: pixelated;
+  opacity: 0.85;
+}
+
+/* Mensagens flutuantes de dano */
+.damage-text {
+  position: absolute;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 14px;
+  font-weight: bold;
+  pointer-events: none;
+  text-shadow: 0 0 6px currentColor;
+  animation: floatUp 0.9s ease-out forwards;
+  z-index: 200;
+}
+
+@keyframes floatUp {
+  0%   { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-48px); }
+}
+
+/* Boss bar melhorada */
+.hud-boss {
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 420px;
+  text-align: center;
+}
+
+#boss-name {
+  font-size: 13px;
+  letter-spacing: 3px;
+  color: #cc4444;
+  text-shadow: 0 0 10px #cc000088;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.boss-bar-bg {
+  height: 10px;
+  background: #1a0000;
+  border: 1px solid #550000;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.boss-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #8b0000, #cc0000, #ff4444);
+  transition: width 0.3s ease;
+  border-radius: 2px;
+}
+
+/* Indicador de fase do boss */
+#boss-phase {
+  font-size: 10px;
+  letter-spacing: 2px;
+  margin-top: 3px;
+  display: block;
 }
 .staff-slot.active {
   border-color: var(--gold);

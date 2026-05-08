@@ -382,6 +382,14 @@ class Enemy {
   takeDamage(dmg, game, type) {
     this.hp -= dmg;
     this.flickerTimer = 8;
+    if (game) {
+      const color = type === 'fire' ? '#ff6600'
+        : type === 'poison' ? '#39d353'
+        : type === 'frost'  ? '#00cfff'
+        : type === 'sword'  ? '#ffffff'
+        : '#cc44ff';
+      game.spawnDamageText(this.x + this.w / 2, this.y, dmg, color);
+    }
     // Damage number
     game.particles.push(new Particle(
       this.x + this.w/2, this.y,
@@ -394,6 +402,9 @@ class Enemy {
   die(game) {
     this.dying = true;
     game.score += this.def.score;
+    if (this instanceof Boss) Audio.bossDie();
+    else Audio.enemyDie();
+
     game.kills++;
     // Drop shard
     if (this.hasShard && game.currentLevel.objective === 'collect_shards') {
@@ -490,61 +501,148 @@ class Boss extends Enemy {
     this.phase = 1;
     this.def.color = def.color;
     this.projTimer = 0;
-    this.enrageTimer = 0;
     this.name = def.name;
+    this.dashTimer = 0;
+    this.orbitalAngle = 0;
   }
-  update(game) {
-    // Phase transition
-    if (this.hp < this.maxHp * 0.5 && this.phase === 1) {
-      this.phase = 2;
-      this.speed *= 1.5;
-      game.showMessage('⚠️ ' + this.name + ' ENRAGED!');
-      for (let i=0;i<30;i++) game.particles.push(new Particle(
-        this.x+this.w/2, this.y+this.h/2,
-        (Math.random()-0.5)*10,(Math.random()-0.5)*10,
-        this.bossDef.color, 8, 60
+
+  getPhase() {
+    const ratio = this.hp / this.maxHp;
+    if (ratio > 0.6) return 1;
+    if (ratio > 0.25) return 2;
+    return 3;
+  }
+
+  checkPhaseTransition(game) {
+    const newPhase = this.getPhase();
+    if (newPhase === this.phase) return;
+    this.phase = newPhase;
+
+    for (let i = 0; i < 40; i++) {
+      game.particles.push(new Particle(
+        this.x + this.w / 2, this.y + this.h / 2,
+        (Math.random() - 0.5) * 14,
+        (Math.random() - 0.5) * 14,
+        this.bossDef.color, 8 + Math.random() * 6, 60
       ));
     }
+
+    game.cameraShake(16, 40);
+    Audio.bossPhase();
+    game.showMessage(`⚠️ ${this.name} — FASE ${this.phase}!`, 3000);
+
+    if (this.phase === 2) {
+      this.speed *= 1.4;
+      this.damage = Math.floor(this.damage * 1.3);
+    }
+    if (this.phase === 3) {
+      this.speed *= 1.3;
+      this.damage = Math.floor(this.damage * 1.5);
+      game.showMessage('☠️ FÚRIA FINAL!', 3000);
+    }
+  }
+
+  update(game) {
+    this.checkPhaseTransition(game);
     super.update(game);
-    // Boss fires projectiles
+    this.orbitalAngle += 0.05;
+
+    const shootInterval = this.phase === 1 ? 110 : this.phase === 2 ? 65 : 40;
     this.projTimer--;
+
     if (this.projTimer <= 0) {
-      this.projTimer = this.phase === 1 ? 120 : 70;
+      this.projTimer = shootInterval;
       const p = game.player;
       const dx = p.x - this.x, dy = p.y - this.y;
-      const dist = Math.sqrt(dx*dx+dy*dy) || 1;
-      const speed = 5 + this.phase;
-      const staffDef = {...STAVES.shadow, damage: this.damage/2};
-      game.projectiles.push(new Projectile(
-        this.x+this.w/2, this.y+this.h/2,
-        (dx/dist)*speed, (dy/dist)*speed,
-        staffDef, false
-      ));
-      if (this.phase === 2) {
-        // Multi-shot
-        for (let a = -30; a <= 30; a += 30) {
-          const rad = a * Math.PI/180;
-          const nx = (dx/dist)*Math.cos(rad) - (dy/dist)*Math.sin(rad);
-          const ny = (dx/dist)*Math.sin(rad) + (dy/dist)*Math.cos(rad);
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const speed = 4 + this.phase * 1.5;
+      const staffDef = {
+        ...STAVES.shadow,
+        damage: this.damage * 0.5,
+        particleColor: this.bossDef.color,
+        color: this.bossDef.color
+      };
+
+      if (this.phase === 1) {
+        game.projectiles.push(new Projectile(
+          this.x + this.w / 2, this.y + this.h / 2,
+          (dx / dist) * speed, (dy / dist) * speed,
+          staffDef, false
+        ));
+
+      } else if (this.phase === 2) {
+        for (let a = -40; a <= 40; a += 20) {
+          const rad = a * Math.PI / 180;
+          const nx = (dx / dist) * Math.cos(rad) - (dy / dist) * Math.sin(rad);
+          const ny = (dx / dist) * Math.sin(rad) + (dy / dist) * Math.cos(rad);
           game.projectiles.push(new Projectile(
-            this.x+this.w/2, this.y+this.h/2,
-            nx*speed, ny*speed, staffDef, false
+            this.x + this.w / 2, this.y + this.h / 2,
+            nx * speed, ny * speed, staffDef, false
           ));
         }
+
+      } else {
+        const spiralCount = 12;
+        for (let i = 0; i < spiralCount; i++) {
+          const a = this.orbitalAngle + (i / spiralCount) * Math.PI * 2;
+          game.projectiles.push(new Projectile(
+            this.x + this.w / 2, this.y + this.h / 2,
+            Math.cos(a) * speed, Math.sin(a) * speed,
+            staffDef, false
+          ));
+        }
+        game.projectiles.push(new Projectile(
+          this.x + this.w / 2, this.y + this.h / 2,
+          (dx / dist) * (speed + 3), (dy / dist) * (speed + 3),
+          staffDef, false
+        ));
+      }
+    }
+
+    if (this.phase === 3) {
+      this.dashTimer--;
+      if (this.dashTimer <= 0) {
+        this.dashTimer = 180;
+        const p = game.player;
+        const dx = p.x - this.x, dy = p.y - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        this.vx = (dx / dist) * 10;
+        this.vy = (dy / dist) * 6;
+        game.cameraShake(8, 20);
       }
     }
   }
+
   draw(ctx, camX, camY) {
-    super.draw(ctx, camX, camY);
-    // Crown effect
     const sx = this.x - camX, sy = this.y - camY;
+
+    if (this.phase === 3) {
+      const pulse = Math.sin(Date.now() * 0.015) * 0.5 + 0.5;
+      ctx.save();
+      ctx.globalAlpha = pulse * 0.35;
+      ctx.fillStyle = '#ff0000';
+      ctx.beginPath();
+      ctx.arc(sx + this.w / 2, sy + this.h / 2, this.w * 0.9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    super.draw(ctx, camX, camY);
+
     ctx.save();
     ctx.font = '36px serif';
     ctx.textAlign = 'center';
-    ctx.fillText(this.bossDef.icon, sx + this.w/2, sy + this.h/2 + 12);
+    ctx.fillText(this.bossDef.icon, sx + this.w / 2, sy + this.h / 2 + 12);
+    ctx.font = "bold 11px 'Share Tech Mono', monospace";
+    ctx.fillStyle = this.phase === 3 ? '#ff4444' : this.phase === 2 ? '#ffaa00' : '#aaaaff';
+    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowBlur = 8;
+    ctx.fillText(`FASE ${this.phase}`, sx + this.w / 2, sy - 14);
     ctx.restore();
   }
 }
+
+
 
 // ─── Player ───────────────────────────────────────────────────
 class Player {
@@ -585,8 +683,12 @@ class Player {
     this.hp -= dmg;
     this.flickerTimer = 15;
     this.invulTimer = 45;
-    if (this.hp <= 0) { this.hp = 0; this.dead = true; }
+    if (this._game) this._game.cameraShake(8, 18);
+    Audio.playerHurt();
+    if (this.hp <= 0) { this.hp = 0; this.dead = true; Audio.playerDie(); }
   }
+
+
   addStaff(id) {
     if (!this.staves.includes(id)) this.staves.push(id);
   }
@@ -635,8 +737,11 @@ class Player {
         this.vy = JUMP_FORCE;
         this.jumpsLeft = Math.max(0, this.jumpsLeft - 1);
         keys._jumpPress = false;
+        Audio.jump();
       }
     }
+
+
     // Move & collide
     this.x += this.vx;
     if (game.isSolid(this.x, this.y + this.h/2) || game.isSolid(this.x, this.y + this.h)) {
@@ -660,6 +765,7 @@ class Player {
     if (keys['Shift'] && this.dashCooldown <= 0 && !this.dashing) {
       this.dashing = true;
       this.dashTimer = 12;
+      Audio.dash();
       this.dashCooldown = DASH_COOLDOWN;
       for (let i=0;i<8;i++) game.particles.push(new Particle(
         this.x+this.w/2,this.y+this.h/2,
@@ -695,6 +801,7 @@ class Player {
   if (this.swordCooldown > 0) return;
   this.swordCooldown = SWORD.cooldown;
   this.swordSwing = 15;
+  Audio.swordSwing();
   const cx = this.x + this.w/2;
   const cy = this.y + this.h/2;
   const hitX = this.dir > 0 ? this.x + this.w : this.x - SWORD.range;
@@ -718,6 +825,7 @@ class Player {
     if (Math.abs(dx) < SWORD.range + e.w/2 && Math.abs(dy) < 40
         && Math.sign(dx) === this.dir) {
       e.takeDamage(SWORD.damage, game, 'sword');
+      Audio.swordHit();
       if (e instanceof Boss && e.dead) game.bossDefeated = true;
     }
   }
@@ -730,40 +838,49 @@ class Player {
     if (!this.staffCooldowns[id]) this.staffCooldowns[id] = 0;
     if (this.staffCooldowns[id] > 0 || this.mp < staff.manaCost) return;
     this.mp -= staff.manaCost;
-    this.staffCooldowns[id] = staff.cooldown / 16; // frames
+    this.staffCooldowns[id] = staff.cooldown / 16;
 
-    // const cx = this.x + this.w/2, cy = this.y + this.h/2;
-    // const dx = mouse.worldX - cx, dy = mouse.worldY - cy;
-    // const dist = Math.sqrt(dx*dx+dy*dy) || 1;
-    // const vx = (dx/dist)*staff.speed, vy = (dy/dist)*staff.speed;
-    const cx = this.x + this.w/2, cy = this.y + this.h/2;
-    const vx = this.dir * staff.speed;
-    const vy = 0;
+    const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
+    // MOUSE AIM — usa a posição real do mouse no mundo
+    const dx = mouse.worldX - cx, dy = mouse.worldY - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    const vx = (dx / dist) * staff.speed;
+    const vy = (dy / dist) * staff.speed;
 
     if (staff.aoe) {
-      // AoE burst
-      for (let a=0;a<8;a++) {
-        const angle = (a/8)*Math.PI*2;
-        game.projectiles.push(new Projectile(cx,cy,Math.cos(angle)*staff.speed,Math.sin(angle)*staff.speed,staff,true));
+      for (let a = 0; a < 8; a++) {
+        const angle = (a / 8) * Math.PI * 2;
+        game.projectiles.push(new Projectile(cx, cy,
+          Math.cos(angle) * staff.speed, Math.sin(angle) * staff.speed, staff, true));
       }
     } else {
-      game.projectiles.push(new Projectile(cx,cy,vx,vy,staff,true));
+      game.projectiles.push(new Projectile(cx, cy, vx, vy, staff, true));
       if (staff.chain) {
-        // Extra spread shots
-        for (let a of [-20,20]) {
-          const rad = a*Math.PI/180;
-          const nx = vx*Math.cos(rad)-vy*Math.sin(rad);
-          const ny = vx*Math.sin(rad)+vy*Math.cos(rad);
-          game.projectiles.push(new Projectile(cx,cy,nx,ny,staff,true));
+        for (const a of [-25, 25]) {
+          const rad = a * Math.PI / 180;
+          const nx = vx * Math.cos(rad) - vy * Math.sin(rad);
+          const ny = vx * Math.sin(rad) + vy * Math.cos(rad);
+          game.projectiles.push(new Projectile(cx, cy, nx, ny, staff, true));
         }
       }
     }
-    // Muzzle particles
-    for (let i=0;i<6;i++) game.particles.push(new Particle(
-      cx, cy, vx+(Math.random()-0.5)*3, vy+(Math.random()-0.5)*3,
-      staff.particleColor, staff.particleSize, 15
+    const staffSounds = {
+      bone: 'castBone', fire: 'castFire', frost: 'castFrost',
+      lightning: 'castLightning', shadow: 'castShadow', poison: 'castPoison'
+    };
+    const soundName = staffSounds[this.staves[this.activeStaff]];
+    if (soundName && Audio[soundName]) Audio[soundName]();
+    for (let i = 0; i < 8; i++) game.particles.push(new Particle(
+      cx, cy,
+      vx * 0.3 + (Math.random() - 0.5) * 3,
+      vy * 0.3 + (Math.random() - 0.5) * 3,
+      staff.particleColor, staff.particleSize, 18
     ));
   }
+
+
+
+
   draw(ctx, camX, camY) {
     const sx = this.x - camX, sy = this.y - camY;
     if (this.flickerTimer > 0 && Math.floor(this.flickerTimer/2)%2===0) return;
@@ -872,38 +989,38 @@ class Player {
 }
 
 // ─── World Generation ─────────────────────────────────────────
-function generateWorld(level) {
-  const COLS = 80, ROWS = 30;
-  const tiles = Array.from({length:ROWS}, () => Array(COLS).fill(0));
-  const cfg = level;
-  // Ground
-  for (let c=0;c<COLS;c++) {
-    for (let r=ROWS-6;r<ROWS;r++) tiles[r][c] = 1;
-  }
-  // Platforms
-  const platCount = cfg.platforms || 6;
-  for (let i=0;i<platCount;i++) {
-    const row = Math.floor(ROWS*0.35 + Math.random()*(ROWS*0.45));
-    const col = Math.floor(2 + Math.random()*(COLS-10));
-    const len = Math.floor(4 + Math.random()*8);
-    for (let c=col;c<Math.min(COLS-1,col+len);c++) tiles[row][c] = 1;
-  }
-  // Walls
-  for (let r=0;r<ROWS;r++) { tiles[r][0]=1; tiles[r][COLS-1]=1; }
-  for (let c=0;c<COLS;c++) { tiles[0][c]=0; }
-  // Ceiling holes
-  for (let c=2;c<COLS-2;c++) tiles[0][c]=0;
-  // Generate decorations
-  const decor = [];
-  const decorTypes = cfg.groundDecor || ['grave'];
-  for (let c=2;c<COLS-2;c++) {
-    const r = ROWS-7;
-    if (tiles[r+1][c]===1 && tiles[r][c]===0 && Math.random()<0.15) {
-      decor.push({ x:c*TILE, y:r*TILE, type: decorTypes[Math.floor(Math.random()*decorTypes.length)] });
-    }
-  }
-  return { tiles, COLS, ROWS, decor };
-}
+// function generateWorld(level) {
+//   const COLS = 80, ROWS = 30;
+//   const tiles = Array.from({length:ROWS}, () => Array(COLS).fill(0));
+//   const cfg = level;
+//   // Ground
+//   for (let c=0;c<COLS;c++) {
+//     for (let r=ROWS-6;r<ROWS;r++) tiles[r][c] = 1;
+//   }
+//   // Platforms
+//   const platCount = cfg.platforms || 6;
+//   for (let i=0;i<platCount;i++) {
+//     const row = Math.floor(ROWS*0.35 + Math.random()*(ROWS*0.45));
+//     const col = Math.floor(2 + Math.random()*(COLS-10));
+//     const len = Math.floor(4 + Math.random()*8);
+//     for (let c=col;c<Math.min(COLS-1,col+len);c++) tiles[row][c] = 1;
+//   }
+//   // Walls
+//   for (let r=0;r<ROWS;r++) { tiles[r][0]=1; tiles[r][COLS-1]=1; }
+//   for (let c=0;c<COLS;c++) { tiles[0][c]=0; }
+//   // Ceiling holes
+//   for (let c=2;c<COLS-2;c++) tiles[0][c]=0;
+//   // Generate decorations
+//   const decor = [];
+//   const decorTypes = cfg.groundDecor || ['grave'];
+//   for (let c=2;c<COLS-2;c++) {
+//     const r = ROWS-7;
+//     if (tiles[r+1][c]===1 && tiles[r][c]===0 && Math.random()<0.15) {
+//       decor.push({ x:c*TILE, y:r*TILE, type: decorTypes[Math.floor(Math.random()*decorTypes.length)] });
+//     }
+//   }
+//   return { tiles, COLS, ROWS, decor };
+// }
 
 // ─── Main Game Class ──────────────────────────────────────────
 class Game {
@@ -921,7 +1038,7 @@ class Game {
     this.levelTimer = 0;
     this.escapeReached = false;
     this.worldW = 80 * TILE;
-    this.worldH = 30 * TILE;
+    this.worldH = 17 * TILE;
     this.keys = {};
     this.mouse = { x:0, y:0, left:false, right:false, leftPress:false, worldX:0, worldY:0 };
     this.particles = [];
@@ -935,6 +1052,10 @@ class Game {
     this.objectiveComplete = false;
     this.exitX = 0; this.exitY = 0;
     this.fogTime = 0;
+    this.shakeX = 0;
+    this.shakeY = 0;
+    this.shakeMag = 0;
+    this.shakeDur = 0;
     this.ambientParticleTimer = 0;
     this.initInput();
   }
@@ -1002,6 +1123,7 @@ class Game {
     // Spawn player on a platform
     const R = this.world.ROWS - 8, C = 4;
     this.player = new Player(C*TILE, R*TILE);
+    this.player._game = this;
 
 
     // Give staves from previous levels
@@ -1076,6 +1198,7 @@ class Game {
     document.getElementById('lu-title').textContent = t('lu_title');
     document.getElementById('lu-score').textContent = `${t('hud_score')}: ${this.score}`;
     document.getElementById('lu-reward').textContent = reward;
+    Audio.levelUp();
     showScreen('levelup-screen');
   }
 
@@ -1086,6 +1209,84 @@ class Game {
     document.getElementById('go-msg').textContent = msgs[Math.floor(Math.random()*msgs.length)];
     document.getElementById('go-score').textContent = `${t('hud_score')}: ${this.score}`;
     showScreen('gameover-screen');
+  }
+
+  drawMinimap() {
+    const mc = document.getElementById('minimap-canvas');
+    if (!mc) return;
+    const mctx = mc.getContext('2d');
+    const mw = mc.width, mh = mc.height;
+    const scaleX = mw / this.worldW;
+    const scaleY = mh / this.worldH;
+
+    mctx.fillStyle = '#050508';
+    mctx.fillRect(0, 0, mw, mh);
+
+    // Tiles
+    for (let r = 0; r < this.world.ROWS; r++) {
+      for (let c = 0; c < this.world.COLS; c++) {
+        if (this.world.tiles[r][c] === 1) {
+          mctx.fillStyle = '#2a2a3a';
+          mctx.fillRect(
+            Math.floor(c * TILE * scaleX),
+            Math.floor(r * TILE * scaleY),
+            Math.max(1, Math.ceil(TILE * scaleX)),
+            Math.max(1, Math.ceil(TILE * scaleY))
+          );
+        }
+      }
+    }
+
+    // Inimigos
+    mctx.fillStyle = '#cc2200';
+    for (const e of this.enemies) {
+      if (e.dead) continue;
+      mctx.fillRect(
+        Math.floor(e.x * scaleX) - 1,
+        Math.floor(e.y * scaleY) - 1,
+        3, 3
+      );
+    }
+
+    // Boss
+    if (this.boss && !this.boss.dead) {
+      mctx.fillStyle = '#ff0000';
+      const pulse = Math.sin(Date.now() * 0.01) > 0;
+      if (pulse) mctx.fillRect(
+        Math.floor(this.boss.x * scaleX) - 2,
+        Math.floor(this.boss.y * scaleY) - 2,
+        5, 5
+      );
+    }
+
+    // Player
+    mctx.fillStyle = '#cc44ff';
+    mctx.fillRect(
+      Math.floor(this.player.x * scaleX) - 2,
+      Math.floor(this.player.y * scaleY) - 2,
+      4, 4
+    );
+
+    // Câmera — área visível
+    mctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    mctx.lineWidth = 1;
+    mctx.strokeRect(
+      Math.floor(this.camX * scaleX),
+      Math.floor(this.camY * scaleY),
+      Math.floor(this.canvas.width * scaleX),
+      Math.floor(this.canvas.height * scaleY)
+    );
+  }
+
+  spawnDamageText(x, y, amount, color = '#ffffff') {
+    const el = document.createElement('div');
+    el.className = 'damage-text';
+    el.textContent = `-${Math.ceil(amount)}`;
+    el.style.color = color;
+    el.style.left = (x - this.camX - 16) + 'px';
+    el.style.top  = (y - this.camY - 20) + 'px';
+    document.getElementById('ui-overlay').appendChild(el);
+    setTimeout(() => el.remove(), 900);
   }
 
   updateHUD() {
@@ -1118,8 +1319,31 @@ class Game {
       bossHud.style.display = 'block';
       document.getElementById('boss-name').textContent = t('hud_boss_prefix') + this.boss.name;
       document.getElementById('boss-bar').style.width = (this.boss.hp/this.boss.maxHp*100)+'%';
+      const phaseEl = document.getElementById('boss-phase');
+      if (phaseEl) {
+        const phaseColors = { 1: '#aaaaff', 2: '#ffaa00', 3: '#ff4444' };
+        phaseEl.textContent = `— FASE ${this.boss.phase} —`;
+        phaseEl.style.color = phaseColors[this.boss.phase] || '#fff';
+      }
     } else {
       bossHud.style.display = 'none';
+    }
+  }
+
+  cameraShake(magnitude, duration) {
+    this.shakeMag = magnitude;
+    this.shakeDur = duration;
+  }
+
+  applyShake() {
+    if (this.shakeDur > 0) {
+      this.shakeDur--;
+      this.shakeX = (Math.random() - 0.5) * this.shakeMag * 2;
+      this.shakeY = (Math.random() - 0.5) * this.shakeMag * 2;
+      this.shakeMag *= 0.9;
+    } else {
+      this.shakeX = 0;
+      this.shakeY = 0;
     }
   }
 
@@ -1173,6 +1397,7 @@ class Game {
       const dx = p.x+p.w/2 - orb.x, dy = p.y+p.h/2 - orb.y;
       if (Math.sqrt(dx*dx+dy*dy) < 30) {
         orb.collected = true;
+        Audio.orbCollect();
         if (orb.type === 'hp') { p.hp = Math.min(p.maxHp, p.hp+25); this.showMessage(t('msg_health_orb')); }
         else { p.mp = Math.min(p.maxMp, p.mp+20); this.showMessage(t('msg_mana_orb')); }
         for (let i=0;i<10;i++) this.particles.push(new Particle(
@@ -1246,6 +1471,7 @@ class Game {
         else this.onLevelComplete();
       }
     }
+    this.applyShake();
     this.fogTime += 0.002;
     this.checkObjective();
     if (this.player.dead) this.onGameOver();
@@ -1255,7 +1481,11 @@ class Game {
   draw() {
     const ctx = this.ctx;
     const W = this.canvas.width, H = this.canvas.height;
+    ctx.save();
+    ctx.translate(this.shakeX, this.shakeY);
     const cfg = this.currentLevel;
+    // Minimapa
+    this.drawMinimap();
     // Sky gradient
     const sky = ctx.createLinearGradient(0, 0, 0, H);
     sky.addColorStop(0, cfg.bg[0]);
@@ -1414,6 +1644,7 @@ class Game {
       ctx.shadowBlur=0;
       ctx.fillText('Press P or ESC to continue', W/2, H/2+50);
     }
+    ctx.restore();
   }
 
   loop() {
